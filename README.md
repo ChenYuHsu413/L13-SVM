@@ -1,5 +1,9 @@
 # 🧠 SVM 互動式教學網站
 
+### 🚀 線上 Demo：<https://l13-svm-interactivatepage.streamlit.app/>
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://l13-svm-interactivatepage.streamlit.app/)
+
 一個用 **Streamlit** 打造的「支持向量機（Support Vector Machine, SVM）」互動式教學網站。
 透過 **scikit-learn** 即時訓練模型、用 **Plotly** 畫出真實的 decision boundary，
 並搭配 **Manim** 預先渲染的概念動畫，帶學習者從直覺一路理解到數學與 Kernel Trick。
