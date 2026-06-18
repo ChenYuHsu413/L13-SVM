@@ -185,6 +185,33 @@
 
 ---
 
+### 1️⃣7️⃣ 「幫我更新 log」
+
+**完成**：把第 14~16 段（prompt 連結、Manim 互動討論、poly/RBF 切換）補進 log.md，更新 Git 歷史表與踩雷總結。commit `76fb6f2` 推送。
+
+---
+
+### 1️⃣8️⃣ 雲端問題排除：`ImportError: cannot import name 'plot_kernel_lift_animation'`（/mount/src/...）
+
+**原因**：錯誤路徑 `/mount/src/l13-svm/...` 是 **Streamlit Community Cloud**，不是本機。確認遠端 `origin/main` 的 plotting.py 確實有該函式（第 264 行）→ 程式碼沒問題。與本機那次相同的**模組快取**：雲端伺服器在函式加入前就啟動，舊版 `utils.plotting` 卡在 `sys.modules`。
+
+**解法**：使用者在 Streamlit Cloud **Manage app → Reboot**（強制重新 git pull + 開乾淨進程）。Reboot 後恢復正常。
+**教訓**：改 `utils/` 被 import 的模組後 push，雲端需手動 Reboot（等同本機重啟 streamlit）；只改 `pages/` 通常自動熱重載即可。
+
+---
+
+### 1️⃣9️⃣ 「把新增的 PDF 推送上去，加在 README 初始 Prompt 下方」
+
+**完成**：`SVM 教學網站部署.pdf`（ChatGPT 對話紀錄存檔）加入 repo；README 在「初始 Prompt 發想」下方加連結（檔名空格用 `%20` 編碼）。commit `4475664` 推送。
+
+---
+
+### 2️⃣0️⃣ 「更新 log + 建立一份我下過的指令完整版」
+
+**完成**：更新本日誌；新增 `prompts.md` 收錄使用者在本專案下過的所有指令（依時間順序）。
+
+---
+
 ## Git 提交歷史
 
 | Commit | 說明 |
@@ -196,6 +223,8 @@
 | `e45e053` | docs：加入 log.md 開發日誌與 workflow.md |
 | `829ec80` | docs：README 加入初始 Prompt 分享連結 |
 | `191c2f1` | feat：互動 2D→3D 升維動畫（poly/RBF 切換） |
+| `76fb6f2` | docs：log 更新（互動動畫改版） |
+| `4475664` | docs：加入 ChatGPT 對話 PDF 存檔並連結至 README |
 
 ---
 
@@ -258,7 +287,7 @@ $env:PATH = "$PWD\tools_ffmpeg;$env:PATH"
 1. **Python 3.14 裝不了 Manim** → 用 uv 另開 3.12 venv，主環境不動。
 2. **ffmpeg 無安裝權限** → 用 `imageio-ffmpeg` 的 bundled binary，複製成 `ffmpeg.exe` 加 PATH。
 3. **Manim scene 只用 `Text` 不用 `MathTex`** → 免裝 LaTeX。
-4. **Streamlit 改 utils 後出現 ImportError** → 模組快取，需重啟伺服器（非改 code）。
+4. **Streamlit 改 utils 後出現 ImportError** → 模組快取（`sys.modules` 卡舊版）。本機需重啟 `streamlit run`；**雲端需 Manage app → Reboot**（非改 code）。只改 `pages/` 通常自動熱重載即可。
 5. **git branch -M main 要在 commit 後執行** → 否則 commit 落在 master 導致 push refspec 錯誤。
 6. **test accuracy 讓 overfitting 看得見** → 只看 training accuracy 會被騙（永遠很高）。
 7. **影片不存在不 crash** → `media.py` 找不到檔顯示提示，先跑網站後補影片皆可。
