@@ -4,6 +4,8 @@
 
 ### 💡 初始 Prompt 發想：<https://chatgpt.com/share/6a336023-01f8-83ee-ad46-e36ccf3aff4b>
 
+### 📄 ChatGPT 對話紀錄存檔：[SVM 教學網站部署.pdf](SVM%20教學網站部署.pdf)
+
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://l13-svm-interactivatepage.streamlit.app/)
 
 ![專案架構與工作流程](workflow.png)
