@@ -5,7 +5,11 @@ import streamlit as st
 
 from utils.datasets import generate_dataset
 from utils.svm_model import train_svm
-from utils.plotting import plot_decision_boundary, plot_decision_surface_3d
+from utils.plotting import (
+    plot_decision_boundary,
+    plot_decision_surface_3d,
+    plot_kernel_lift_animation,
+)
 from utils.media import play_video
 from utils.explanations import KERNEL_TABLE
 
@@ -42,6 +46,48 @@ Kernel Trick 的想法是：**把資料映射到更高維的空間**，在那裡
 st.divider()
 st.subheader("🎬 概念動畫：Kernel Trick")
 play_video("kernel_trick_intro.mp4", caption="資料被映射到高維空間後，就能用平面分開")
+
+st.divider()
+
+# --- interactive lift animation ---------------------------------------------
+st.subheader("🕹️ 互動升維動畫：自己玩玩看")
+st.markdown(
+    "下面是**可互動**的版本（Plotly，瀏覽器即時運算）。"
+    "按 **▶ 播放** 看同心圓被升維到 3D、平面切入；改下面的參數會**即時重建**。"
+)
+
+lift_label = st.radio(
+    "升維方式",
+    ["多項式 z = x²+y²", "RBF z = exp(-γ·r²)"],
+    horizontal=True,
+    key="lift_mode",
+)
+lift_mode = "rbf" if "RBF" in lift_label else "poly"
+
+a1, a2, a3 = st.columns(3)
+with a1:
+    anim_noise = st.slider("Noise 雜訊", 0.0, 0.2, 0.06, step=0.02, key="anim_noise")
+with a2:
+    lift_strength = st.slider("升維強度（高度縮放）", 0.5, 4.0, 2.0, step=0.5, key="lift")
+with a3:
+    gamma = st.slider("gamma（僅 RBF）", 0.2, 5.0, 1.0, step=0.2, key="lift_gamma", disabled=(lift_mode == "poly"))
+
+X_anim, y_anim = generate_dataset("circles", n_samples=200, noise=anim_noise)
+anim_fig = plot_kernel_lift_animation(
+    X_anim, y_anim, lift_strength=lift_strength, mode=lift_mode, gamma=gamma
+)
+st.plotly_chart(anim_fig, use_container_width=True)
+
+if lift_mode == "rbf":
+    st.caption(
+        "RBF：用「到中心的高斯相似度」當高度 → **內圈隆起成山頂、外圈在山腳**（與多項式上下相反）。"
+        "拉 gamma 看山丘變胖變瘦。註：RBF 真正的特徵空間是無限維，這是以中心為 landmark 的簡化示意。"
+    )
+else:
+    st.caption(
+        "多項式：用半徑平方當高度 → **內圈留在低處、外圈升到高處**，綠色平面從中間切開。"
+        "這是 poly kernel（degree 2）的精確特徵映射。"
+    )
 
 st.divider()
 

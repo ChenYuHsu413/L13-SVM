@@ -259,3 +259,135 @@ def plot_decision_surface_3d(X, y, model, title="Decision Function Surface (3D)"
         legend=dict(orientation="h", yanchor="bottom", y=0, xanchor="right", x=1),
     )
     return fig
+
+
+def plot_kernel_lift_animation(X, y, lift_strength=2.0, n_frames=24, mode="poly", gamma=1.0):
+    """Interactive Plotly animation of the kernel trick lifting 2D -> 3D.
+
+    Two lift modes (toggleable in the UI):
+      - "poly": z = lift_strength * (x^2 + y^2). The explicit quadratic feature
+        map (a degree-2 polynomial kernel). Inner ring stays low, outer rises.
+      - "rbf": z = lift_strength * exp(-gamma * (x^2 + y^2)). A Gaussian-bump
+        feature relative to the centre (an RBF flavour). Inner ring peaks high,
+        outer sits low -- the vertical arrangement is the opposite of "poly".
+
+    Either way a flat green plane separates the two classes once lifted. Runs
+    entirely in the browser (Play button + frame slider), instant and dep-free.
+    """
+    r2 = X[:, 0] ** 2 + X[:, 1] ** 2
+    if mode == "rbf":
+        z_final = lift_strength * np.exp(-gamma * r2)
+        lift_title = f"z = exp(-{gamma:g}·(x²+y²))（RBF 高斯特徵）"
+    else:
+        z_final = lift_strength * r2
+        lift_title = "z = x² + y²（多項式特徵）"
+    # Plane height: midway between the two classes' mean lifted height.
+    z_plane = 0.5 * (z_final[y == 0].mean() + z_final[y == 1].mean())
+    z_top = float(z_final.max()) * 1.1
+
+    ts = np.linspace(0.0, 1.0, n_frames)
+
+    def _scatter(t):
+        traces = []
+        for cls in np.unique(y):
+            mask = y == cls
+            traces.append(
+                go.Scatter3d(
+                    x=X[mask, 0],
+                    y=X[mask, 1],
+                    z=t * z_final[mask],
+                    mode="markers",
+                    name=f"Class {cls}",
+                    marker=dict(
+                        size=4,
+                        color=CLASS_COLORS[int(cls) % len(CLASS_COLORS)],
+                        line=dict(width=0.5, color="white"),
+                    ),
+                )
+            )
+        return traces
+
+    pad = 0.5
+    xr = [float(X[:, 0].min() - pad), float(X[:, 0].max() + pad)]
+    yr = [float(X[:, 1].min() - pad), float(X[:, 1].max() + pad)]
+    # Plane fades in over the second half of the animation (opacity tied to t).
+    def _plane(t):
+        return go.Surface(
+            x=np.array([[xr[0], xr[1]], [xr[0], xr[1]]]),
+            y=np.array([[yr[0], yr[0]], [yr[1], yr[1]]]),
+            z=np.full((2, 2), z_plane),
+            showscale=False,
+            opacity=0.45 * max(0.0, (t - 0.5) / 0.5),
+            colorscale=[[0, "green"], [1, "green"]],
+            hoverinfo="skip",
+            name="separating plane",
+        )
+
+    frames = [
+        go.Frame(data=_scatter(t) + [_plane(t)], name=f"{i}") for i, t in enumerate(ts)
+    ]
+    fig = go.Figure(data=_scatter(ts[0]) + [_plane(ts[0])], frames=frames)
+
+    fig.update_layout(
+        title=f"Kernel Trick：2D → 3D 升維動畫｜{lift_title}",
+        height=620,
+        margin=dict(l=0, r=0, t=50, b=0),
+        scene=dict(
+            xaxis=dict(title="Feature 1", range=xr),
+            yaxis=dict(title="Feature 2", range=yr),
+            zaxis=dict(title="lifted z", range=[0, z_top]),
+            camera=dict(eye=dict(x=1.6, y=1.6, z=1.1)),
+            aspectmode="cube",
+        ),
+        updatemenus=[
+            dict(
+                type="buttons",
+                showactive=False,
+                x=0.02,
+                y=0.05,
+                xanchor="left",
+                buttons=[
+                    dict(
+                        label="▶ 播放",
+                        method="animate",
+                        args=[
+                            None,
+                            dict(
+                                frame=dict(duration=90, redraw=True),
+                                fromcurrent=True,
+                                transition=dict(duration=0),
+                            ),
+                        ],
+                    ),
+                    dict(
+                        label="⏸ 暫停",
+                        method="animate",
+                        args=[
+                            [None],
+                            dict(mode="immediate", frame=dict(duration=0, redraw=False)),
+                        ],
+                    ),
+                ],
+            )
+        ],
+        sliders=[
+            dict(
+                active=0,
+                x=0.15,
+                len=0.8,
+                currentvalue=dict(prefix="升維進度："),
+                steps=[
+                    dict(
+                        method="animate",
+                        label=f"{int(t * 100)}%",
+                        args=[
+                            [f"{i}"],
+                            dict(mode="immediate", frame=dict(duration=0, redraw=True)),
+                        ],
+                    )
+                    for i, t in enumerate(ts)
+                ],
+            )
+        ],
+    )
+    return fig
