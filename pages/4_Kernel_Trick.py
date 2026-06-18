@@ -5,7 +5,7 @@ import streamlit as st
 
 from utils.datasets import generate_dataset
 from utils.svm_model import train_svm
-from utils.plotting import plot_decision_boundary
+from utils.plotting import plot_decision_boundary, plot_decision_surface_3d
 from utils.media import play_video
 from utils.explanations import KERNEL_TABLE
 
@@ -57,18 +57,33 @@ with c2:
 dataset_key = "circles" if "Circles" in dataset_label else "moons"
 n_samples = 300
 
-cols = st.columns(3)
-for col, kernel in zip(cols, ["linear", "rbf", "poly"]):
-    with col:
-        X, y, model, acc = fit_for_kernel(dataset_key, n_samples, noise, kernel)
-        st.markdown(f"**{kernel} kernel** — accuracy: `{acc:.1%}`")
-        fig = plot_decision_boundary(X, y, model, title=f"{kernel}")
-        fig.update_layout(height=380, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+tab_2d, tab_3d = st.tabs(["🗺️ 2D 邊界對比", "⛰️ 3D 決策曲面對比"])
+
+with tab_2d:
+    cols = st.columns(3)
+    for col, kernel in zip(cols, ["linear", "rbf", "poly"]):
+        with col:
+            X, y, model, acc = fit_for_kernel(dataset_key, n_samples, noise, kernel)
+            st.markdown(f"**{kernel} kernel** — accuracy: `{acc:.1%}`")
+            fig = plot_decision_boundary(X, y, model, title=f"{kernel}")
+            fig.update_layout(height=380, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True, key=f"2d_{kernel}")
+
+with tab_3d:
+    st.caption("曲面高度 = `decision_function`，灰色平面為 z=0（邊界）。可拖曳旋轉，對比三種 kernel 的「地形」。")
+    cols3d = st.columns(3)
+    for col, kernel in zip(cols3d, ["linear", "rbf", "poly"]):
+        with col:
+            X, y, model, acc = fit_for_kernel(dataset_key, n_samples, noise, kernel)
+            st.markdown(f"**{kernel} kernel** — accuracy: `{acc:.1%}`")
+            fig = plot_decision_surface_3d(X, y, model, title=kernel)
+            fig.update_layout(height=420, showlegend=False)
+            fig.update_traces(showscale=False, selector=dict(type="surface"))
+            st.plotly_chart(fig, use_container_width=True, key=f"3d_{kernel}")
 
 st.info(
-    "👀 觀察：`linear` 在非線性資料上 accuracy 通常明顯較低；"
-    "`rbf` 能畫出貼合資料的彎曲邊界；`poly` 介於兩者之間。"
+    "👀 觀察：`linear` 的曲面是一個**斜平面**，z=0 切出的是直線，分不開彎曲資料；"
+    "`rbf` 的曲面像**山丘/盆地**，能沿著資料彎曲；`poly` 介於兩者之間。"
 )
 
 st.divider()

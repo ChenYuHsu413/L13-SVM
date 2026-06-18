@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.datasets import DATASET_OPTIONS, generate_dataset
-from utils.svm_model import train_svm
+from utils.svm_model import train_svm_with_split
 from utils.plotting import plot_decision_boundary, plot_decision_surface_3d
 from utils.explanations import (
     explain_c_parameter,
@@ -27,11 +27,13 @@ def get_dataset(dataset_key, n_samples, noise, random_state=42):
 
 @st.cache_resource(show_spinner=False)
 def get_model(dataset_key, n_samples, noise, kernel, C, gamma, degree):
-    # Re-generate the same (cached) data, then fit. The cache key includes every
-    # parameter so the model is re-fit only when something actually changes.
+    # Re-generate the same (cached) data, then fit on a train split. The cache key
+    # includes every parameter so the model is re-fit only when something changes.
     X, y = get_dataset(dataset_key, n_samples, noise)
-    model, accuracy = train_svm(X, y, kernel=kernel, C=C, gamma=gamma, degree=degree)
-    return model, accuracy
+    model, train_acc, test_acc, splits = train_svm_with_split(
+        X, y, kernel=kernel, C=C, gamma=gamma, degree=degree
+    )
+    return model, train_acc, test_acc, splits
 
 
 # --- sidebar controls -------------------------------------------------------
@@ -69,10 +71,12 @@ st.title("3️⃣ Interactive SVM ⭐")
 st.markdown("調整左側參數，即時觀察 **decision boundary**、**support vectors** 與 **accuracy** 的變化。")
 
 X, y = get_dataset(dataset_key, n_samples, noise)
-model, accuracy = get_model(dataset_key, n_samples, noise, kernel, C, gamma, degree)
+model, train_acc, test_acc, splits = get_model(dataset_key, n_samples, noise, kernel, C, gamma, degree)
+X_train, y_train, X_test, y_test = splits
 
 n_sv = int(len(model.support_vectors_))
-sv_ratio = n_sv / len(X)
+sv_ratio = n_sv / len(X_train)
+acc_gap = train_acc - test_acc
 
 col_plot, col_info = st.columns([3, 2])
 
@@ -80,15 +84,17 @@ with col_plot:
     tab_2d, tab_3d = st.tabs(["🗺️ 2D 邊界", "⛰️ 3D 決策曲面"])
 
     with tab_2d:
-        fig = plot_decision_boundary(X, y, model, title=f"{kernel} kernel｜C={C}")
+        fig = plot_decision_boundary(
+            X_train, y_train, model, title=f"{kernel} kernel｜C={C}", X_test=X_test, y_test=y_test
+        )
         st.plotly_chart(fig, use_container_width=True)
         if kernel == "linear":
-            st.caption("黑實線：decision boundary｜灰虛線：margin 邊界（f(x) = ±1）｜黑圈：support vectors")
+            st.caption("● 訓練點｜◆ 測試點｜黑實線：decision boundary｜灰虛線：margin（f(x)=±1）｜黑圈：support vectors")
         else:
-            st.caption("黑實線：decision boundary｜黑圈：support vectors")
+            st.caption("● 訓練點｜◆ 測試點｜黑實線：decision boundary｜黑圈：support vectors")
 
     with tab_3d:
-        fig3d = plot_decision_surface_3d(X, y, model, title=f"{kernel} kernel 決策曲面")
+        fig3d = plot_decision_surface_3d(X_train, y_train, model, title=f"{kernel} kernel 決策曲面")
         st.plotly_chart(fig3d, use_container_width=True)
         st.caption(
             "曲面高度 = `decision_function` f(x)｜灰色水平面為 z=0（即 decision boundary）｜"
@@ -102,10 +108,13 @@ with col_plot:
 
 with col_info:
     st.markdown("### 📊 模型結果")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Training Accuracy", f"{accuracy:.1%}")
-    m2.metric("Support Vectors", n_sv)
-    m3.metric("SV 佔比", f"{sv_ratio:.1%}")
+    m1, m2 = st.columns(2)
+    m1.metric("訓練準確率 (Train)", f"{train_acc:.1%}")
+    m2.metric("測試準確率 (Test)", f"{test_acc:.1%}", delta=f"{-acc_gap:.1%}", delta_color="inverse")
+    m3, m4 = st.columns(2)
+    m3.metric("Support Vectors", n_sv)
+    m4.metric("SV 佔比 (訓練集)", f"{sv_ratio:.1%}")
+    st.caption("資料以 70%/30% 切成訓練/測試集；模型只看訓練集。測試準確率才代表對新資料的泛化能力。")
 
     st.markdown("#### 模型參數摘要")
     st.dataframe(
@@ -122,11 +131,16 @@ with col_info:
     st.markdown("#### 🧭 目前參數解讀")
     st.info(interpret_current_params(kernel, C, gamma, degree))
 
-    # Overfitting / underfitting hint.
-    if accuracy >= 0.99 and sv_ratio < 0.15 and C >= 10:
-        st.warning("⚠️ 準確率極高且 support vectors 很少 + C 偏大，留意 **overfitting**。")
-    elif accuracy < 0.7:
-        st.warning("⚠️ 準確率偏低，模型可能 **underfitting**，可嘗試換 kernel 或調大 C / gamma。")
+    # Overfitting / underfitting hint, driven by the honest train/test gap.
+    if acc_gap >= 0.12 and train_acc >= 0.9:
+        st.warning(
+            f"⚠️ 訓練準確率高、但測試掉了 **{acc_gap:.1%}** → 典型 **overfitting**。"
+            "可試著調小 C 或 gamma、或換較簡單的 kernel。"
+        )
+    elif train_acc < 0.7 and test_acc < 0.7:
+        st.warning("⚠️ 訓練與測試準確率都偏低 → **underfitting**，可換 kernel 或調大 C / gamma。")
+    else:
+        st.success("✅ 訓練與測試準確率接近，模型泛化情況良好。")
 
 
 st.divider()

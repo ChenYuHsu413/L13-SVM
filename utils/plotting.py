@@ -27,15 +27,16 @@ def _make_mesh(X, padding=0.5, resolution=300):
     return xx, yy
 
 
-def plot_decision_boundary(X, y, model, title="SVM Decision Boundary"):
+def plot_decision_boundary(X, y, model, title="SVM Decision Boundary", X_test=None, y_test=None):
     """Return a Plotly Figure showing the decision boundary for `model`.
 
     Parameters
     ----------
-    X : (n, 2) array
-    y : (n,) array of labels {0, 1}
+    X, y : training points drawn as filled circles (these define the SVs shown).
     model : fitted sklearn SVC
     title : str
+    X_test, y_test : optional held-out points, drawn as diamonds so students can
+        see how unseen data falls relative to the boundary.
 
     Returns
     -------
@@ -107,6 +108,26 @@ def plot_decision_boundary(X, y, model, title="SVM Decision Boundary"):
                 ),
             )
         )
+
+    # 3b) Held-out test points (optional), drawn as diamonds.
+    if X_test is not None and y_test is not None:
+        for cls in np.unique(y_test):
+            mask = y_test == cls
+            fig.add_trace(
+                go.Scatter(
+                    x=X_test[mask, 0],
+                    y=X_test[mask, 1],
+                    mode="markers",
+                    name=f"Test Class {cls}",
+                    marker=dict(
+                        color=CLASS_COLORS[int(cls) % len(CLASS_COLORS)],
+                        size=9,
+                        symbol="diamond",
+                        opacity=0.6,
+                        line=dict(width=1, color="black"),
+                    ),
+                )
+            )
 
     # 4) Support vectors, circled.
     if hasattr(model, "support_vectors_") and len(model.support_vectors_) > 0:

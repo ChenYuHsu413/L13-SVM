@@ -1,9 +1,19 @@
 """Page 2 — Margin 與 Support Vectors。"""
 
+import numpy as np
 import streamlit as st
 
+from utils.datasets import generate_dataset
+from utils.svm_model import train_svm
+from utils.plotting import plot_decision_boundary
 from utils.media import play_video
 from utils.explanations import explain_support_vectors, explain_margin
+
+
+@st.cache_data(show_spinner=False)
+def _margin_demo_data():
+    # A fixed, clearly separable dataset so the margin lines read cleanly.
+    return generate_dataset("linear", n_samples=120, noise=0.05, random_state=7)
 
 st.set_page_config(page_title="Margin 與 Support Vectors", page_icon="📏", layout="wide")
 
@@ -56,6 +66,35 @@ with col2:
         "關鍵直覺：把遠離邊界的點刪掉，邊界完全不變；"
         "只有 **support vectors** 真正影響邊界。"
     )
+
+st.divider()
+
+st.subheader("🎛️ 互動小示範：C 如何改變 margin 寬窄")
+st.markdown("拉動 C，觀察 margin（兩條灰虛線間距）與 support vectors 數量的變化。")
+
+demo_C = st.select_slider(
+    "C（懲罰參數）", options=[0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0], value=1.0
+)
+
+X_demo, y_demo = _margin_demo_data()
+demo_model, _ = train_svm(X_demo, y_demo, kernel="linear", C=demo_C)
+# margin width = 2 / ||w||  (w = model.coef_ for a linear kernel)
+margin_width = 2.0 / np.linalg.norm(demo_model.coef_[0])
+n_sv_demo = int(len(demo_model.support_vectors_))
+
+c_plot, c_txt = st.columns([3, 2])
+with c_plot:
+    fig = plot_decision_boundary(X_demo, y_demo, demo_model, title=f"linear kernel｜C={demo_C}")
+    st.plotly_chart(fig, use_container_width=True)
+with c_txt:
+    st.metric("margin 寬度 = 2 / ‖w‖", f"{margin_width:.3f}")
+    st.metric("Support Vectors", n_sv_demo)
+    if demo_C <= 0.1:
+        st.info("C 很小：模型寬鬆，**margin 較寬**，允許較多點落在 margin 內。")
+    elif demo_C >= 10:
+        st.warning("C 很大：模型嚴格，**margin 較窄**，努力把每個點分對。")
+    else:
+        st.success("C 適中：在 margin 寬度與容錯之間取得平衡。")
 
 st.divider()
 st.markdown("#### ➡️ 下一步建議")
