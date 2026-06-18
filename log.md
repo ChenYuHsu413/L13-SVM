@@ -151,6 +151,40 @@
 
 ---
 
+### 1️⃣4️⃣ 「README 最上面加入初始 Prompt 生成連結」
+
+**完成**：README 標題下方、demo 連結之後，加入「💡 初始 Prompt 發想」連結（ChatGPT share 連結）。commit `829ec80` 推送。
+
+---
+
+### 1️⃣5️⃣ 「Manim 應該要能互動，使用者改參數後即時顯示動畫，可行嗎？」
+
+**技術評估（重點討論）**：誠實回覆 **用 Manim 做即時互動不可行**，但目標可達成——換工具用 Plotly。
+- Manim 是離線逐格渲染成影片，單支要數秒~數十秒，稱不上即時
+- Manim 在雲端裝不起來（系統需 cairo/pango/ffmpeg，Streamlit Cloud 1GB 記憶體邊渲染邊服務會超時）
+- **Plotly** 原生支援 animation frames + 播放按鈕，在瀏覽器端執行 → 真・即時、部署零負擔
+- **建議**：保留 Manim 影片當電影級開場，另加 Plotly 互動動畫讓使用者玩參數（互補，非取代）
+
+**使用者選擇**：先做「Kernel 升維互動動畫」。
+
+**完成**：
+- `utils/plotting.py` 新增 `plot_kernel_lift_animation()`：Plotly 3D 動畫，把同心圓從 z=0 平滑升維、綠色平面切入，含 ▶ 播放/⏸ 暫停按鈕 + 升維進度滑桿
+- Page 4 在 Manim 影片下方新增「🕹️ 互動升維動畫」區，含 noise / 升維強度 滑桿，改參數即時重建
+- **驗證**：24 frames，slider/buttons 正常
+
+---
+
+### 1️⃣6️⃣ 「比較常見的升維切 3D 好像是用 RBF？」
+
+**技術釐清**：使用者直覺有理但需澄清——原本的 `z = x²+y²` 其實對應 **多項式（poly degree-2）特徵**，不是 RBF。
+- **多項式**：`z = x²+y²`（半徑平方），有限維、可精確畫；內圈低、外圈高
+- **RBF**：`z = exp(-γ·r²)`（到中心的高斯相似度），內圈隆起成山頂、外圈在山腳（**上下相反**）
+- 重要觀念：RBF 真正特徵空間是**無限維**、畫不出來，3D 圖是「以中心為 landmark」的簡化示意
+
+**完成**：`plot_kernel_lift_animation()` 加 `mode`（poly/rbf）與 `gamma` 參數；Page 4 加「升維方式」切換鈕 + gamma 滑桿（poly 模式時 disable），兩模式各有對應中文解說。**驗證**：兩模式 z 值上下相反（poly 1.4~2.5 vs rbf 0.29~0.69）。commit `191c2f1` 推送。
+
+---
+
 ## Git 提交歷史
 
 | Commit | 說明 |
@@ -159,6 +193,9 @@
 | `80fedb5` | docs：README 加入 demo 連結與徽章 |
 | `cb45ca7` | feat：train/test 準確率、3D kernel 對比、margin 互動、主題色 |
 | `a6bf896` | docs：README 加入 workflow 資訊圖表 |
+| `e45e053` | docs：加入 log.md 開發日誌與 workflow.md |
+| `829ec80` | docs：README 加入初始 Prompt 分享連結 |
+| `191c2f1` | feat：互動 2D→3D 升維動畫（poly/RBF 切換） |
 
 ---
 
@@ -185,7 +222,7 @@ L13-SVM/
 ├── utils/
 │   ├── datasets.py             # generate_dataset()
 │   ├── svm_model.py            # train_svm() / train_svm_with_split()
-│   ├── plotting.py             # plot_decision_boundary() / plot_decision_surface_3d()
+│   ├── plotting.py             # plot_decision_boundary() / _surface_3d() / _kernel_lift_animation()
 │   ├── explanations.py         # 教學文字與對照表
 │   └── media.py                # 安全播放影片
 └── pages/
@@ -225,3 +262,5 @@ $env:PATH = "$PWD\tools_ffmpeg;$env:PATH"
 5. **git branch -M main 要在 commit 後執行** → 否則 commit 落在 master 導致 push refspec 錯誤。
 6. **test accuracy 讓 overfitting 看得見** → 只看 training accuracy 會被騙（永遠很高）。
 7. **影片不存在不 crash** → `media.py` 找不到檔顯示提示，先跑網站後補影片皆可。
+8. **要「即時互動動畫」別用 Manim** → Manim 是離線渲染、雲端裝不起來；用 Plotly animation frames（瀏覽器端、即時、零部署負擔）。Manim 保留做電影級開場影片。
+9. **kernel 升維示意：poly 與 RBF 不同** → `z=x²+y²` 是多項式（poly）特徵（內低外高）；`z=exp(-γr²)` 是 RBF 高斯特徵（內高外低，上下相反）；RBF 真正空間為無限維，3D 圖只是 landmark 簡化示意。
